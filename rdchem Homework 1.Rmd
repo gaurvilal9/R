@@ -1,0 +1,208 @@
+---
+title: Firm Size and R&D Spending
+author: "Gaurvi Lal"
+
+date: "October 9, 2020"
+output:
+  html_document: default
+  header-includes: \usepackage{color}
+fontsize: 12pt
+margin: 1in
+---
+<!--
+
+-->
+
+```{r setup, echo=FALSE, message=F, warning=F, include=FALSE}
+
+#==============================================================================
+#   This chunk will be used for every assignment
+#==============================================================================
+
+  # Clear the working space
+    rm(list = ls())
+
+  #Set working directory
+setwd("~/Downloads/Gaurvi/Gaurvi_Econometrics/ECON 2509")
+#getwd()
+
+### Load the packages (all must have been installed)
+    library(doBy)
+    library(dplyr)
+    library(foreign)
+    library(ggplot2)
+    library(knitr)
+    library(lmtest)
+    library(readstata13)
+    library(sandwich)
+    library(stargazer)
+    library(AER)
+    library(gdata)
+    library(OIdata)
+    library(wooldridge)
+    library(datasets)
+
+cse=function(reg) {
+        rob=sqrt(diag(vcovHC(reg, type="HC1")))
+        return(rob)
+        }
+
+```
+
+In this report, we investigate the relationship between a firm size (defined by the firm's sales or profits) and its investment in Research and Development. The question is "Do larger firms invest more in Research & Development?
+
+```{r data, echo=FALSE, warning=FALSE, include=FALSE}
+
+# So, we first give an instruction to get the data we want. This chunk of R code is not included in the RMarkdown report because of the include=FALSE in the setting above. Even if it is not included, it is essential for the R code to know the data before you can plot anything. 
+
+data(rdchem)
+
+
+```
+
+## Descriptive Statistics
+
+```{r stargazer, echo=FALSE, warning=FALSE, comment="" }
+# We create a table of descriptive statistics for firm size and R&D.
+
+stargazer(rdchem[c("rd", "sales", "profits")], type="text", digits=2, summary.stat=c("n", "mean", "median", "sd"), title="Firm Size and R&D Spending", flip=FALSE,
+          covariate.labels=c("R&D Spending", "Sales", "Profits"))
+```
+
+The rdchem data contains information on 32 firms in the chemical industry collected from Bussinessweek R&D Scoreboard, October 25, 1991. Based on the table of descriptive statistics, the average firm sales in this sample is 3,797.01 million, the average profit is 370.50 million, and the average spend on Research & Development is 153.68 million. Note that the median for all three variables (sales, profits and R&D spending) is lower than the mean, indicating that the distributions of these variables are positively skewed (right-skewed). Eyeballing the standard deviation, we observe that there is significant variation in the three variables.
+
+```{r images1, echo=FALSE, warning=FALSE, message=FALSE, comment=""}
+
+# Create a dataset sp that eliminates the missing values.
+#sp<-na.omit(sp500)
+
+# Histogram of R&D
+ggplot(rdchem) + geom_histogram(aes(x=rd), col="blue", binwidth = 2) + 
+labs(title = "Research & Development") 
+
+```
+
+The histogram of R&D spending confirms that the distribution of R&D spending is positively skewed. That is, there a only few firms who invest more in Research & Development.
+
+```{r images2, echo=FALSE, warning=FALSE, message=FALSE, comment=""}
+# Basic scatter plot of R&D against sales 
+ggplot(rdchem, aes(x=sales, y=rd)) + geom_point(col="blue") + labs(title = "R&D Spending and Sales", x = "Sales", y = "R&D Spending") + stat_smooth(method = "lm", col = "red", se=FALSE)
+
+# Basic scatter plot of R&D against profits 
+ggplot(rdchem, aes(x=profits, y=rd)) + geom_point(col="blue") + labs(title = "R&D Spending and Profits", x = "Profits", y = "R&D Spending") + stat_smooth(method = "lm", col = "red", se=FALSE)
+
+```
+
+The scatter plots of R&D spending against firm sales and profits suggest a positive correlation between these variables. However, two firms look like a outliers driving their relationships.
+
+## Regressions 
+
+```{r regression1, echo=FALSE, warning=FALSE, message=FALSE, comment=""}
+# Runs a regression of R&D on sales on the rdchem data 
+regressor1_sales<-lm(rd ~ sales , data=rdchem)
+
+# Runs a regression of R&D on profits on the rdchem data 
+regressor1_profits<-lm(rd ~ profits , data=rdchem)
+
+# displays the regression results
+stargazer(regressor1_sales, regressor1_profits, se=list(cse(regressor1_sales), cse(regressor1_profits)),
+    title="Firm Size and Research & Development", type="text", 
+    star.cutoffs=NA, df=FALSE, digits=3)
+```
+
+1. What is the interpretation of the estimated coefficients on Sales and Profits? Use the appropriate units.
+
+   Based on the regression results, an increase in sales by 1 million increases the R&D     investment by 0.041 million, i.e. 41,000.
+   On the other hand, an increase in sales by 1 million increases the R&D investment by     0.372 million i.e. 372,000.
+   There seems to be a positive effect of firm sales and profits on investment in           Research & Development. 
+
+2. Are the estimated coefficients statistically significant? That is, can you reject the null hypothesis that the estimated coefficients equal zero vs. a two-sided alternative at the 10%, 5%, and 1% significance levels?
+   
+   Firm Sales:
+   H0: Beta1 = 0
+   HA: Beta1 != 0
+   
+   t-statistic = (Estimator - Hypothesized Value)/SE(Estimator)
+            = (0.041 -0)/0.005
+            = 8.2
+   At 10% significance level:
+   |t| > 1.645, we have evidence to reject the null hypothesis.
+   At 5% significance level:
+   |t| > 1.96, we have evidence to reject the null hypothesis.
+   At 1% significance level:
+   |t| > 2.56, we have evidence to reject the null hypothesis.
+  
+   Firm Profits:
+   H0: Beta1 = 0
+   HA: Beta1 != 0
+   
+   t-statistic = (Estimator - Hypothesized Value)/SE(Estimator)
+               = (0.372 -0)/0.0301
+               = 12.3
+   At 10% significance level:
+   |t| > 1.645, we have evidence to reject the null hypothesis.
+   At 5% significance level:
+   |t| > 1.96, we have evidence to reject the null hypothesis. 
+   At 1% significance level:
+   |t| > 2.56, we have evidence to reject the null hypothesis.
+  
+3. What is the p-value associated with the coefficients’ t-statistic? What does it mean?
+   
+   For the estimated coefficients on Sales:
+   P-value=p(|Z|>8.2) > 0.05. It means that we have a very strong evidence to reject the    null hypothesis.
+   
+   For the estimated coefficients on Profits:
+   P-value=p(|Z|>12.3) > 0.05.It means that we have a very strong evidence to reject the    null hypothesis. 
+   
+4. Construct a 95% confidence interval for the slope co-efficients.
+  
+   Slope of Sales:
+   [Beta1_hat-1.96SE(Beta1_hat), Beta1_hat+1.96SE(Beta1_hat)]
+   =[0.041-1.96x0.005, 0.041+1.96x0.005]
+   =[0.031, 0.0508]
+  
+   Slope of Profits:
+   [Beta1_hat-1.96SE(Beta1_hat), Beta1_hat+1.96SE(Beta1_hat)]
+   =[0.372-1.96x0.0301, 0.372+1.96x0.0301]
+   =[0.311, 0.43]
+  
+
+5. What is the R-squared? What does that mean? Explain.
+
+   The r-squared of 0.902 suggests that firm sales explain 90.2% of the variation in R&D    investment.
+   The r-squared of 0.907 suggests that firm profits explain 90.7% of the variation in      R&D investment.
+
+```{r regression2, echo=FALSE, warning=FALSE, message=FALSE, comment=""}
+# creates a new data set rdchem_small without the outliers
+rdchem_small=subset(rdchem, rd<1000)
+
+# creates a scatter plot of R&D against sales on the new data set without outliers
+ggplot(rdchem_small, aes(x=sales, y=rd)) + geom_point(col="blue") + 
+labs(title = "Research & Development and Sales", x = "Sales", y = "Research & Development") + geom_smooth(method = "lm", col = "red", se=FALSE)
+
+# creates a scatter plot of R&D against profits on the new data set without outliers
+ggplot(rdchem_small, aes(x=profits, y=rd)) + geom_point(col="blue") + 
+labs(title = "Research & Development and Profits", x = "Profits", y = "Research & Development") + geom_smooth(method = "lm", col = "red", se=FALSE)
+
+# runs the regression of R&D on sales for the new data set without outliers
+regressor2_sales<-lm(rd ~ sales, data=rdchem_small)
+
+# runs the regression of R&D on profits for the new data set without outliers
+regressor2_profits<-lm(rd ~ profits, data=rdchem_small)
+
+# display the regression results
+stargazer(regressor2_sales, regressor2_profits, se=list(cse(regressor2_sales), cse(regressor2_profits)),
+    title="Firm Size and Research & Development", type="text", 
+    star.cutoffs=NA, df=FALSE, digits=3)
+```
+
+6. How do your results compare with the previous results? Explain.
+   
+   An increase in firm sales by 1 million, increases the R&D investment by 0.048 million    i.e. 48,000.
+   An increase in firm profits by 1 million, increases the R&D investment by 0.493          million i.e. 49,300.
+
+   The outliers do not skew the result of the regression much.The correlations between      R&D spending and sales or profits are still positive, but the slopes of the regression    lines are greater than the previous result, and the standard errors of the estimated     slopes are also greater than before. In addition, the R2 decreases from about 90% to     less than 70%. Therefore, we should not remove the outliers and use all 32 firms for     our analysis.
+  
+7. In conclusion, based on the entire analysis, answer the question: Do larger firms invest more in R&D?
+   
+   To conclude, larger firms do invest more in R&D, although profits affect the R&D         spending more than sales.
